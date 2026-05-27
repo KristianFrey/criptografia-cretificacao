@@ -1,0 +1,3 @@
+pycryptodome  ##AES e assinatura digital
+cryptography  ##certificados
+paho-mqtt  ##Lidar com MTQQ

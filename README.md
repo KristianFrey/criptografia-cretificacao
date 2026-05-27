@@ -2,6 +2,9 @@
 
 ### Ativar ambiente local
 
-#### python -m venv venv
+python -m venv venv
+.\venv\Scripts\activate
 
-#### .\venv\Scripts\activate
+### Rodar o requirements
+
+pip install -r requirements.txt
