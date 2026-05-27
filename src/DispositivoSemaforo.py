@@ -3,6 +3,8 @@ import time
 import random
 import json
 
+from HashUtils import gerar_hash
+
 HOST = '127.0.0.1'
 PORT = 5000
 
@@ -20,9 +22,18 @@ while True:
 
     mensagem = json.dumps(dados)
 
-    client.send(mensagem.encode())
+    hash_mensagem = gerar_hash(mensagem)
 
-    print("Dados enviados:")
-    print(mensagem)
+    pacote = {
+        "dados": dados,
+        "hash": hash_mensagem
+    }
+
+    pacote_json = json.dumps(pacote)
+
+    client.send(pacote_json.encode())
+
+    print("\n=== PACOTE ENVIADO ===")
+    print(pacote_json)
 
     time.sleep(5)
