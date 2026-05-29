@@ -5,6 +5,7 @@ import json
 
 from Criptografia import criptografar
 from HashUtils import gerar_hash
+from Assinatura import assinar_mensagem
 
 HOST = '127.0.0.1'
 PORT = 5000
@@ -15,41 +16,39 @@ client.connect((HOST, PORT))
 
 while True:
 
-    # Dados do semáforo
     dados = {
         "cruzamento": "A1",
         "carros": random.randint(0, 50),
         "estado": random.choice(["VERDE", "AMARELO", "VERMELHO"])
     }
 
-    # transforma em JSON
     mensagem = json.dumps(dados)
 
-    # gera hash SHA256
+    # hash
     hash_mensagem = gerar_hash(mensagem)
 
-    # cria pacote completo
+    # assinatura digital
+    assinatura = assinar_mensagem(mensagem)
+
     pacote = {
         "dados": dados,
-        "hash": hash_mensagem
+        "hash": hash_mensagem,
+        "assinatura": assinatura
     }
 
-    # transforma pacote em JSON
     pacote_json = json.dumps(pacote)
 
-    # criptografa tudo
     pacote_criptografado = criptografar(pacote_json)
 
-    # envia
     client.send(pacote_criptografado.encode())
 
-    print("\n=== DADOS ORIGINAIS ===")
+    print("\n=== DADOS ===")
     print(mensagem)
 
-    print("\n=== HASH SHA-256 ===")
+    print("\n=== HASH ===")
     print(hash_mensagem)
 
-    print("\n=== PACOTE CRIPTOGRAFADO ===")
-    print(pacote_criptografado)
+    print("\n=== ASSINATURA ===")
+    print(assinatura[:50], "...")
 
     time.sleep(5)
