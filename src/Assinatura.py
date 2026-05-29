@@ -6,7 +6,7 @@ import base64
 # assinar mensagem
 def assinar_mensagem(mensagem):
 
-    with open("chaves/private.pem", "rb") as f:
+    with open("../chaves/private.pem", "rb") as f:
         private_key = RSA.import_key(f.read())
 
     hash_obj = SHA256.new(mensagem.encode())
@@ -19,7 +19,7 @@ def assinar_mensagem(mensagem):
 # verificar assinatura
 def verificar_assinatura(mensagem, assinatura_recebida):
 
-    with open("chaves/public.pem", "rb") as f:
+    with open("../chaves/public.pem", "rb") as f:
         public_key = RSA.import_key(f.read())
 
     hash_obj = SHA256.new(mensagem.encode())
