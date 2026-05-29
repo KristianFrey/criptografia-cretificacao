@@ -1,6 +1,7 @@
 import socket
 import json
 
+from Criptografia import descriptografar
 from HashUtils import gerar_hash
 
 HOST = '127.0.0.1'
@@ -20,30 +21,49 @@ print(f"Dispositivo conectado: {addr}")
 
 while True:
 
-    data = conn.recv(1024)
+    data = conn.recv(4096)
 
     if not data:
         break
 
-    pacote = json.loads(data.decode())
+    # recebe criptografado
+    pacote_criptografado = data.decode()
+
+    print("\n=== PACOTE CRIPTOGRAFADO ===")
+    print(pacote_criptografado)
+
+    # descriptografa
+    pacote_json = descriptografar(pacote_criptografado)
+
+    print("\n=== PACOTE DESCRIPTOGRAFADO ===")
+    print(pacote_json)
+
+    # converte JSON
+    pacote = json.loads(pacote_json)
 
     dados = pacote["dados"]
+
     hash_recebido = pacote["hash"]
 
+    # recalcula hash
     mensagem = json.dumps(dados)
 
     hash_calculado = gerar_hash(mensagem)
 
-    print("\n=== PACOTE RECEBIDO ===")
-    print(dados)
-
-    print("\nHash recebido:")
+    print("\n=== HASH RECEBIDO ===")
     print(hash_recebido)
 
-    print("\nHash calculado:")
+    print("\n=== HASH CALCULADO ===")
     print(hash_calculado)
 
+    # valida integridade
     if hash_recebido == hash_calculado:
-        print("\n✅ Integridade VERIFICADA")
+
+        print("\n✅ INTEGRIDADE VERIFICADA")
+
+        print("\n=== DADOS FINAIS ===")
+        print(dados)
+
     else:
-        print("\n❌ Dados ALTERADOS")
+
+        print("\n❌ DADOS ALTERADOS")
