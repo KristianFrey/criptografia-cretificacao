@@ -4,6 +4,7 @@ import json
 from Criptografia import descriptografar
 from HashUtils import gerar_hash
 from Assinatura import verificar_assinatura
+from datetime import datetime
 
 HOST = '127.0.0.1'
 PORT = 5000
@@ -27,42 +28,107 @@ while True:
     if not data:
         break
 
-    pacote_criptografado = data.decode()
+    try:
 
-    pacote_json = descriptografar(pacote_criptografado)
+        # pacote criptografado
+        pacote_criptografado = data.decode()
 
-    pacote = json.loads(pacote_json)
+        # descriptografa
+        pacote_json = descriptografar(
+            pacote_criptografado
+        )
 
-    dados = pacote["dados"]
+        # converte json
+        pacote = json.loads(pacote_json)
 
-    hash_recebido = pacote["hash"]
+        device_id = pacote["device_id"]
 
-    assinatura = pacote["assinatura"]
+        timestamp = pacote["timestamp"]
 
-    mensagem = json.dumps(dados)
+        # converte timestamp recebido
+        timestamp_pacote = datetime.fromisoformat(
+            timestamp
+        )
 
-    # valida hash
-    hash_calculado = gerar_hash(mensagem)
+        # horário atual
+        agora = datetime.now()
 
-    integridade_ok = hash_recebido == hash_calculado
+        # diferença em segundos
+        diferenca = (
+            agora - timestamp_pacote
+        ).total_seconds()
 
-    # valida assinatura
-    assinatura_ok = verificar_assinatura(
-        mensagem,
-        assinatura
-    )
+        # valida expiração
+        timestamp_ok = diferenca <= 30
 
-    print("\n=== DADOS RECEBIDOS ===")
-    print(dados)
+        dados = pacote["dados"]
 
-    print("\nIntegridade:", integridade_ok)
+        hash_recebido = pacote["hash"]
 
-    print("Assinatura válida:", assinatura_ok)
+        assinatura = pacote["assinatura"]
 
-    if integridade_ok and assinatura_ok:
+        mensagem = json.dumps(dados)
 
-        print("\n✅ PACOTE AUTÊNTICO E ÍNTEGRO")
+        # valida hash
+        hash_calculado = gerar_hash(mensagem)
 
-    else:
+        integridade_ok = (
+            hash_recebido == hash_calculado
+        )
 
-        print("\n❌ PACOTE INVÁLIDO")
+        # valida assinatura
+        assinatura_ok = verificar_assinatura(
+            mensagem,
+            assinatura
+        )
+
+        print("\n============================")
+        print("PACOTE RECEBIDO")
+        print("============================")
+
+        print("\nDevice ID:")
+        print(device_id)
+
+        print("\nTimestamp:")
+        print(timestamp)
+
+        print("\nDados:")
+        print(dados)
+
+        print("\nIntegridade:")
+        print(integridade_ok)
+
+        print("\nAssinatura válida:")
+        print(assinatura_ok)
+        
+        print("\nTimestamp válido:")
+        print(timestamp_ok)
+
+        # salva log
+        with open("logs.txt", "a", encoding="utf-8") as f:
+            f.write(
+                f"""
+            DEVICE: {device_id}
+            TIMESTAMP: {timestamp}
+            DADOS: {dados}
+            INTEGRIDADE: {integridade_ok}
+            ASSINATURA: {assinatura_ok}
+            TIMESTAMP_VALIDO: {timestamp_ok}
+            -----------------------------------
+            """
+            )
+                        
+
+        # validação final
+        if integridade_ok and assinatura_ok and timestamp_ok:
+
+            print("\n✅ PACOTE AUTÊNTICO")
+
+        else:
+
+            print("\n❌ PACOTE INVÁLIDO")
+
+    except Exception as e:
+
+        print("\nERRO:")
+        print(e)
