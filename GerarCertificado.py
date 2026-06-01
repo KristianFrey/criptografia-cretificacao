@@ -1,48 +1,50 @@
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import rsa
-from datetime import datetime, timedelta
+"""
+Tarefa 4 — Gera a CA simulada e emite certificado do dispositivo semáforo.
+Executar na raiz do projeto: python GerarCertificado.py
+"""
 
-# gerar chave privada
-private_key = rsa.generate_private_key(
-    public_exponent=65537,
-    key_size=2048
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+from Certificado import (
+    AUTORIDADE_EMISSORA,
+    gerar_autoridade_certificadora,
+    emitir_certificado_dispositivo,
+    extrair_metadados,
 )
 
-# salvar chave privada
-with open("chaves/private_cert.pem", "wb") as f:
-    f.write(
-        private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        )
-    )
+DEVICE_ID = "SEMAFORO_A1"
 
-# certificado
-subject = issuer = x509.Name([
-    x509.NameAttribute(NameOID.COUNTRY_NAME, "BR"),
-    x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "RS"),
-    x509.NameAttribute(NameOID.LOCALITY_NAME, "Santa Cruz do Sul"),
-    x509.NameAttribute(NameOID.ORGANIZATION_NAME, "SmartTraffic"),
-    x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "IoT"),
-    x509.NameAttribute(NameOID.COMMON_NAME, "SEMAFORO_A1"),
-])
 
-cert = (
-    x509.CertificateBuilder()
-    .subject_name(subject)
-    .issuer_name(issuer)
-    .public_key(private_key.public_key())
-    .serial_number(x509.random_serial_number())
-    .not_valid_before(datetime.utcnow())
-    .not_valid_after(datetime.utcnow() + timedelta(days=365))
-    .sign(private_key, hashes.SHA256())
-)
+def main():
+    print("=" * 60)
+    print("  TAREFA 4 — Emissão de Certificado Digital IoT")
+    print("  Cenário: Semáforo Inteligente em Cidades Inteligentes")
+    print("=" * 60)
 
-# salvar certificado
-with open("certificados/certificado.pem", "wb") as f:
-    f.write(cert.public_bytes(serialization.Encoding.PEM))
+    print("\n[1/3] Gerando Autoridade Certificadora simulada...")
+    cert_ca, _ = gerar_autoridade_certificadora()
+    print(f"      CA criada: {AUTORIDADE_EMISSORA}")
 
-print("Certificado criado com sucesso!")
+    print(f"\n[2/3] Emitindo certificado para dispositivo {DEVICE_ID}...")
+    cert, _, caminho_cert, caminho_priv = emitir_certificado_dispositivo(DEVICE_ID)
+    print(f"      Certificado: {caminho_cert}")
+    print(f"      Chave privada: {caminho_priv}")
+
+    print("\n[3/3] Metadados obrigatórios do certificado:")
+    meta = extrair_metadados(cert)
+    print(f"      Device ID:           {meta['device_id']}")
+    print(f"      Autoridade Emissora: {meta['autoridade_emissora']}")
+    print(f"      Válido de:           {meta['valido_de']}")
+    print(f"      Válido até:          {meta['valido_ate']}")
+    print(f"      Chave pública:       RSA {meta['chave_publica_modulo_bits']} bits")
+    print(f"      Fingerprint SHA-256: {meta['chave_publica_fingerprint_sha256']}")
+
+    print("\nCertificado emitido com sucesso!")
+    print("Próximo passo: python DistribuirCertificado.py")
+
+
+if __name__ == "__main__":
+    main()
