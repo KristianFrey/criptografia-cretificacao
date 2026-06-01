@@ -20,20 +20,20 @@ AUTORIDADE_EMISSORA = "SmartTraffic IoT CA"
 DIAS_VALIDADE_CA = 3650
 DIAS_VALIDADE_DISPOSITIVO = 365
 
-RAIZ = Path(__file__).resolve().parent.parent
-PASTA_CERTIFICADOS = RAIZ / "certificados"
-PASTA_CHAVES = RAIZ / "chaves"
-PASTA_DISPOSITIVOS = RAIZ / "dispositivos"
-PASTA_CA = PASTA_CERTIFICADOS / "ca"
-PASTA_EMITIDOS = PASTA_CERTIFICADOS / "emitidos"
-
-CAMINHO_CA_CERT = PASTA_CA / "ca.pem"
-CAMINHO_CA_PRIVADA = PASTA_CHAVES / "ca_private.pem"
+from config import (
+    PASTA_CERTIFICADOS,
+    PASTA_CHAVES,
+    PASTA_DISPOSITIVOS,
+    PASTA_CA,
+    PASTA_EMITIDOS,
+    CAMINHO_CA_CERT,
+    CAMINHO_CA_PRIVADA,
+    garantir_estrutura_dados,
+)
 
 
 def _garantir_pastas():
-    for pasta in (PASTA_CERTIFICADOS, PASTA_CHAVES, PASTA_CA, PASTA_EMITIDOS, PASTA_DISPOSITIVOS):
-        pasta.mkdir(parents=True, exist_ok=True)
+    garantir_estrutura_dados()
 
 
 def _nome_emissor_ca():

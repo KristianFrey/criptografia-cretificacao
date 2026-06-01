@@ -147,6 +147,12 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# Dados sensíveis (gerar com scripts/provisionar_rede.py)
+dados/chaves/
+dados/certificados/
+dados/dispositivos/
+dados/logs/
+
 # Environments
 .env
 .envrc

@@ -4,7 +4,7 @@ Tarefa 6 — SmartTraffic Secure Protocol (STSP) v1.0
 Protocolo de comunicação segura para semáforos inteligentes sobre MQTT.
 
 Camadas (dispositivo → servidor):
-  1. Aplicação   — telemetria JSON (carros, estado)
+  1. Aplicação   — telemetria JSON (carros, estado, fase, fila, modo)
   2. Integridade — SHA-256 sobre os dados
   3. Autenticidade — assinatura RSA (chave privada do certificado X.509)
   4. Confidencialidade — cifragem simétrica AES-128-EAX (padrão)
@@ -29,10 +29,12 @@ PROTOCOLO = "STSP"
 VERSAO = "1.0"
 
 MQTT_HOST = "127.0.0.1"
-MQTT_PORT = 1883
+MQTT_PORT = 1883  # simulador local
+MQTT_PORT_TLS = 8883  # produção — MQTT/TLS na DMZ (Trabalho 2)
 MQTT_QOS = 1
 MQTT_CLIENT_ID_SERVIDOR = "smarttraffic-servidor"
 MQTT_TOPIC_BASE = "smarttraffic/v1/semaforo"
+MQTT_TOPIC_ATMS = "smarttraffic/v1/atms/alertas"
 
 
 def topic_telemetria(device_id: str) -> str:
@@ -41,6 +43,24 @@ def topic_telemetria(device_id: str) -> str:
 
 def topic_telemetria_wildcard() -> str:
     return f"{MQTT_TOPIC_BASE}/+/telemetria"
+
+
+def topic_atms_alertas() -> str:
+    """Dashboard ATMS — alertas correlacionados pelo SIEM (Trabalho 2)."""
+    return MQTT_TOPIC_ATMS
+
+
+def montar_alerta_atms(device_id: str, severidade: str, mensagem: str, fontes: list) -> dict:
+    return {
+        "protocolo": PROTOCOLO,
+        "tipo": "alerta_siem",
+        "device_id": device_id,
+        "severidade": severidade,
+        "mensagem": mensagem,
+        "fontes_correlacionadas": fontes,
+        "timestamp": datetime.now().isoformat(),
+        "destino": "ATMS_DASHBOARD",
+    }
 
 
 def montar_pacote(device_id: str, dados: dict, timestamp: str = None, algoritmo: str = None) -> dict:
@@ -142,7 +162,13 @@ def processar_pacote(pacote: dict, ngfw, proxy, ids, siem) -> dict:
     resultado["hids_ok"] = hids_ok
 
     if not nids_ok or not hids_ok:
-        siem.ingest("IDS", {"device_id": device_id, "nids_ok": nids_ok, "hids_ok": hids_ok})
+        siem.ingest("IDS", {"device_id": device_id, "nids_ok": nids_ok, "hids_ok": hids_ok}, is_alert=True)
+        if not nids_ok:
+            siem.ingest(
+                "MQTT_BROKER",
+                {"device_id": device_id, "event": "DOS_SUSPEITO"},
+                is_alert=True,
+            )
 
     siem.ingest("NGFW", {"device_id": device_id, "event": "ALLOWED"}, is_alert=False)
     siem.ingest("Proxy", {"device_id": device_id, "event": "PROXIED"}, is_alert=False)

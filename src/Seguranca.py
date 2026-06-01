@@ -53,6 +53,7 @@ class MockIDS:
         self.window_seconds = 10
         self.dos_threshold = 5
         self.valid_states = {"VERDE", "AMARELO", "VERMELHO"}
+        self.valid_modos = {"NORMAL", "EMERGENCIA", "MANUTENCAO"}
         self.prev_state = {}
         self.prev_carros = {}
 
@@ -74,6 +75,24 @@ class MockIDS:
         dados = pacote.get("dados", {})
         estado = dados.get("estado", "")
         carros = dados.get("carros", 0)
+        modo = dados.get("modo", "NORMAL")
+        tempo_fase = dados.get("tempo_fase_seg", 0)
+        fila = dados.get("fila_metros", 0)
+
+        if modo not in self.valid_modos:
+            self._alert("HIDS", device_id, "INVALID_MODE",
+                        f"Modo operacional invalido: {modo}")
+            return False
+
+        if not (5 <= tempo_fase <= 300):
+            self._alert("HIDS", device_id, "INVALID_PHASE_TIME",
+                        f"Tempo de fase fora do padrao: {tempo_fase}s")
+            return False
+
+        if fila < 0 or fila > 500:
+            self._alert("HIDS", device_id, "INVALID_QUEUE",
+                        f"Fila inconsistente: {fila}m")
+            return False
 
         if estado not in self.valid_states:
             self._alert("HIDS", device_id, "INVALID_STATE",
@@ -109,9 +128,10 @@ class MockIDS:
 
 
 class MockSIEM:
-    def __init__(self, ngfw):
+    def __init__(self, ngfw, on_atms_alert=None):
         self.ngfw = ngfw
         self.logs = []
+        self.on_atms_alert = on_atms_alert
 
     def ingest(self, source, event, is_alert=False):
         self.logs.append({
@@ -139,8 +159,14 @@ class MockSIEM:
             if len(sources) >= 2 and device != "unknown":
                 print(f"\n  [SIEM] CORRELACAO: {len(sources)} fontes reportando anomalias em {device}")
                 print(f"  [SIEM] Ameaca critica confirmada - orquestrando resposta automatizada")
-                self._automated_response(device)
+                self._automated_response(device, list(sources))
 
-    def _automated_response(self, device_id):
+    def _automated_response(self, device_id, fontes=None):
         print(f"  [SIEM] Resposta: Despachando comando para NGFW bloquear {device_id}")
         self.ngfw.add_to_blacklist(device_id)
+        if self.on_atms_alert:
+            self.on_atms_alert(
+                device_id,
+                fontes or [],
+                "Ameaca critica correlacionada — dispositivo bloqueado automaticamente",
+            )

@@ -46,6 +46,8 @@ O payload publicado no MQTT é o pacote JSON **cifrado** (`aes|base64...`).
 
 - **QoS:** 1 (entrega pelo menos uma vez)
 - **Broker:** embarcado local (`127.0.0.1:1883`) via `BrokerMQTT.py`
+- **Produção (T2):** MQTT/TLS na porta **8883** na DMZ; STSP permanece como camada de aplicação
+- **ATMS:** alertas SIEM em `smarttraffic/v1/atms/alertas`
 
 ## Fluxo dispositivo → servidor
 
