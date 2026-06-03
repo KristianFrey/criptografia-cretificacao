@@ -1,4 +1,4 @@
-pycryptodome  ##AES e assinatura digital
-cryptography  ##certificados
-paho-mqtt  ##Cliente MQTT (Tarefa 6)
-amqtt  ##Broker MQTT embarcado para simulacao local
+pycryptodome
+cryptography
+paho-mqtt
+amqtt
