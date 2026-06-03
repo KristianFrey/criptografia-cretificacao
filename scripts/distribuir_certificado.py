@@ -37,6 +37,9 @@ DEVICE_ID = "SEMAFORO_A1"
 # PSK simulada — em produção viria de fábrica ou QR code no dispositivo
 PSK_PROVISIONAMENTO = hashlib.sha256(b"SmartTraffic-Provision-2027").digest()[:16]
 
+# TODO: trocar pra mac, trocar log para JSON, fazer instanciador de semaforos. verificar se é possivel fazer um orquestrador de uma avenida/cruzamento. Implementar o modo de emergencia nos semaforos (abrir quando necessario)
+# TODO: revisar se deve usar TAREFA 5 — Assinatura Digital RSA (Semáforo Inteligente).
+
 WHITELIST = {"SEMAFORO_A1", "SEMAFORO_B2", "SEMAFORO_C3", "CAMERA_A1"}
 
 

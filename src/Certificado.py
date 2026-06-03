@@ -214,7 +214,6 @@ def extrair_metadados(cert: x509.Certificate) -> dict:
         "chave_publica_fingerprint_sha256": fingerprint,
     }
 
-
 def caminhos_dispositivo(device_id: str):
     pasta = PASTA_DISPOSITIVOS / device_id
     return {
@@ -223,13 +222,11 @@ def caminhos_dispositivo(device_id: str):
         "chave_privada": pasta / "private.pem",
     }
 
-
 def caminhos_emissao(device_id: str):
     return {
         "certificado": PASTA_EMITIDOS / f"{device_id}.pem",
         "chave_privada": PASTA_CHAVES / f"{device_id}_private.pem",
     }
-
 
 def verificar_certificado(cert: x509.Certificate, device_id_esperado: str = None) -> tuple[bool, str]:
     """Valida cadeia (CA), validade temporal e Device ID."""
@@ -264,7 +261,6 @@ def verificar_certificado(cert: x509.Certificate, device_id_esperado: str = None
         return False, f"Emissor não autorizado: {emissor}"
 
     return True, "Certificado válido e confiável"
-
 
 def obter_certificado_confiavel(device_id: str) -> x509.Certificate | None:
     """Carrega certificado da pasta do dispositivo ou do registro da CA."""
