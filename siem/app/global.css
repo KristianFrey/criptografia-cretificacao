@@ -1,0 +1,237 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #0a0e17;
+  color: #c9d1d9;
+  font-family: 'Courier New', monospace;
+  min-height: 100vh;
+}
+
+.cabecalho {
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cabecalho h1 {
+  color: #58a6ff;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+
+.cabecalho .status {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.status-dot.online { background: #3fb950; }
+.status-dot.emergencia { background: #f85149; }
+.status-dot.ataque { background: #d29922; }
+
+.conteudo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto 1fr;
+  gap: 16px;
+  padding: 16px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.painel {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.painel-titulo {
+  font-size: 14px;
+  font-weight: 600;
+  color: #58a6ff;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.painel-titulo .contagem {
+  font-size: 11px;
+  color: #8b949e;
+  font-weight: normal;
+}
+
+.dispositivos-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cartao-dispositivo {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 14px;
+  transition: border-color 0.3s;
+}
+
+.cartao-dispositivo.autentico { border-color: #3fb950; }
+.cartao-dispositivo.emergencia { border-color: #f85149; animation: pulse 1s infinite; }
+.cartao-dispositivo.manutencao { border-color: #d29922; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.cartao-nome {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f0f6fc;
+  margin-bottom: 8px;
+}
+
+.cartao-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  font-size: 11px;
+}
+
+.cartao-info span {
+  color: #8b949e;
+}
+
+.cartao-info strong {
+  color: #c9d1d9;
+}
+
+.cartao-info .modo-emergencia {
+  color: #f85149;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.tabela-log {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.tabela-log th {
+  text-align: left;
+  padding: 6px 8px;
+  color: #8b949e;
+  border-bottom: 1px solid #30363d;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.tabela-log td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #21262d;
+  color: #c9d1d9;
+}
+
+.tabela-log tr.autentico td:last-child { color: #3fb950; }
+.tabela-log tr.mitm td:last-child { color: #f85149; font-weight: 700; }
+.tabela-log tr.ambulancia td { color: #79c0ff; }
+
+.lista-ataques {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.alerta-mitm {
+  background: #1f1a1a;
+  border-left: 3px solid #f85149;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 0 4px 4px 0;
+  font-size: 11px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-10px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.alerta-mitm .alerta-tipo {
+  color: #f85149;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.alerta-mitm .alerta-detalhe {
+  color: #8b949e;
+}
+
+.alerta-mitm .alerta-timestamp {
+  color: #484f58;
+  font-size: 10px;
+  float: right;
+}
+
+.ambulancia-banner {
+  background: linear-gradient(90deg, #1a1a2e, #0d1117);
+  border: 1px solid #79c0ff;
+  border-radius: 6px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: pulse 0.8s infinite;
+}
+
+.ambulancia-banner .amb-info {
+  font-size: 13px;
+  color: #79c0ff;
+  font-weight: 600;
+}
+
+.ambulancia-banner .amb-coord {
+  font-size: 11px;
+  color: #8b949e;
+}
+
+.log-vazio {
+  color: #484f58;
+  text-align: center;
+  padding: 40px;
+  font-size: 13px;
+}
+
+.painel-cheio {
+  grid-column: 1 / -1;
+}
+
+.controles-topo {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #8b949e;
+}
+
+.indicador {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
