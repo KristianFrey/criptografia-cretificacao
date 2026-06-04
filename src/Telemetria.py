@@ -22,9 +22,17 @@ class GeradorTelemetria:
         self.fila_metros = random.randint(0, 80)
         self.modo = "NORMAL"
         self._modo_forcado = None
+        self._estado_forcado = None
 
     def definir_modo_emergencia(self, ativo: bool = True):
         self._modo_forcado = "EMERGENCIA" if ativo else None
+
+    def travar_estado(self, estado: str):
+        self._estado_forcado = estado
+        self.estado = estado
+
+    def destravar_estado(self):
+        self._estado_forcado = None
 
     def _avancar_fase(self):
         self.estado = TRANSICOES[self.estado]
@@ -37,12 +45,21 @@ class GeradorTelemetria:
     def proximo_pacote(self) -> dict:
         if self._modo_forcado:
             self.modo = self._modo_forcado
-        elif random.random() < 0.25:
-            self._avancar_fase()
+        else:
             if random.random() < 0.02:
                 self.modo = "EMERGENCIA"
             elif self.modo == "EMERGENCIA" and random.random() < 0.3:
                 self.modo = "NORMAL"
+
+        if self._estado_forcado:
+            self.estado = self._estado_forcado
+            self.tempo_fase_seg = {
+                "VERDE": random.randint(30, 60),
+                "AMARELO": random.randint(3, 8),
+                "VERMELHO": random.randint(25, 50),
+            }[self.estado]
+        elif random.random() < 0.25:
+            self._avancar_fase()
 
         self.carros = max(0, min(50, self.carros + random.randint(-8, 12)))
         self.fila_metros = max(0, min(200, self.fila_metros + random.randint(-15, 20)))

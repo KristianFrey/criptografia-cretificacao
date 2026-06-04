@@ -97,7 +97,7 @@ class AtacanteMitM:
                 "versao": VERSAO,
                 "device_id": "SEMAFORO_A1",
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                "dados": {"carros": -50, "estado": "ROXO", "tempo_fase_seg": 0,
+                "dados": {"carros": -50, "estado": "INVENTADO_ATACANTE", "tempo_fase_seg": 0,
                           "fila_metros": 9999, "modo": "CAOTICO", "local": "cruzamento_A1"},
                 "hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
                 "assinatura": "UEFDT1RFQURVTERSQUFPRkFMU08=",

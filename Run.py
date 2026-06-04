@@ -2,13 +2,15 @@
 """
 Run.py — Orquestrador principal do SmartTraffic.
 
-Inicia automaticamente:
-  1. Servidor HTTP SIEM (painel web na porta 8090)
-  2. Broker MQTT embarcado
-  3. Servidor central (validacao + logging JSON)
-  4. Cruzamento (2 semaforos coordenados)
-  5. Atacante MitM (publica pacotes falsos a cada 10s)
-  6. Ambulancia (entra em emergencia apos alguns segundos)
+Fluxo automatico (clone => ativar_venv => Run.py => FIM):
+  1. Provisiona certificados (sempre, garante ambiente limpo)
+  2. Compila frontend SIEM (se necessario)
+  3. Inicia servidor HTTP SIEM (painel web na porta 8090)
+  4. Inicia broker MQTT embarcado
+  5. Inicia servidor central (validacao + logging JSON)
+  6. Inicia Cruzamento (2 semaforos coordenados)
+  7. Agenda atacante MitM (publica pacotes falsos)
+  8. Agenda ambulancia (entra em emergencia)
 
 Uso:
   python Run.py
@@ -17,13 +19,16 @@ Abra http://localhost:8090 no navegador para ver o painel SIEM.
 Pressione Ctrl+C para encerrar tudo.
 """
 
+import os
+import subprocess
 import sys
 import time
 import threading
 import signal
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+RAIZ = Path(__file__).resolve().parent
+sys.path.insert(0, str(RAIZ / "src"))
 
 from BrokerMQTT import iniciar_broker_em_thread
 from Servidor import ao_conectar, ao_receber_mensagem, ngfw, proxy, ids, siem
@@ -36,11 +41,8 @@ from Protocolo import (
     MQTT_CLIENT_ID_SERVIDOR,
     PROTOCOLO,
     VERSAO,
-    topico_telemetria_curinga,
-    topico_alertas_atms,
-    topico_presenca_ambulancia_curinga,
 )
-from config import DISPOSITIVOS_PADRAO
+from config import DISPOSITIVOS_PADRAO, CAMINHO_CA_CERT, garantir_estrutura_dados
 import paho.mqtt.client as mqtt
 
 threads = []
@@ -50,6 +52,37 @@ DELAY_ATAQUE = 15
 DELAY_AMBULANCIA = 25
 DURACAO_AMBULANCIA = 20
 INTERVALO_ATAQUE = 10
+
+
+def _provisionar():
+    print("=" * 60)
+    print("  [SETUP] Provisionando certificados da rede...")
+    print("=" * 60)
+    script = RAIZ / "scripts" / "provisionar_rede.py"
+    resultado = subprocess.run(
+        [sys.executable, str(script)],
+        capture_output=True, text=True, cwd=str(RAIZ)
+    )
+    if resultado.returncode != 0:
+        print("ERRO no provisionamento:")
+        print(resultado.stderr)
+        sys.exit(1)
+    print(resultado.stdout)
+
+
+def _compilar_frontend():
+    pasta_siem = RAIZ / "siem"
+    if not (pasta_siem / "node_modules").exists():
+        print("\n  [SETUP] Instalando dependencias do frontend (npm install)...")
+        subprocess.run(["npm", "install"], cwd=str(pasta_siem), check=True)
+
+    precisa_build = not (pasta_siem / "out" / "index.html").exists()
+    if precisa_build:
+        print("\n  [SETUP] Compilando frontend SIEM (npm run build)...")
+        subprocess.run(["npm", "run", "build"], cwd=str(pasta_siem), check=True)
+        print("  [SETUP] Frontend compilado em siem/out/")
+    else:
+        print("  [SETUP] Frontend ja compilado, pulando build.")
 
 
 def _iniciar_cruzamento():
@@ -157,6 +190,14 @@ def main():
 
     signal.signal(signal.SIGINT, _tratar_sinal)
     signal.signal(signal.SIGTERM, _tratar_sinal)
+
+    garantir_estrutura_dados()
+
+    print("\n[SETUP] Verificando e provisionando certificados...")
+    _provisionar()
+
+    print("\n[SETUP] Verificando e compilando frontend SIEM...")
+    _compilar_frontend()
 
     _iniciar_servidor()
 
