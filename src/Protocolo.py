@@ -1,16 +1,14 @@
 """
 Tarefa 6 — SmartTraffic Secure Protocol (STSP) v1.0
 
-Protocolo de comunicação segura para semáforos inteligentes sobre MQTT.
+Protocolo de comunicacao segura para semaforos inteligentes sobre MQTT.
 
-Camadas (dispositivo → servidor):
-  1. Aplicação   — telemetria JSON (carros, estado, fase, fila, modo)
-  2. Integridade — SHA-256 sobre os dados
-  3. Autenticidade — assinatura RSA (chave privada do certificado X.509)
-  4. Confidencialidade — cifragem simétrica AES-128-EAX (padrão)
-  5. Transporte  — MQTT QoS 1 (semáforo → broker → servidor central)
-
-Tópico MQTT: smarttraffic/v1/semaforo/{device_id}/telemetria
+Camadas (dispositivo -> servidor):
+  1. Aplicacao       — telemetria JSON (carros, estado, fase, fila, modo)
+  2. Integridade     — SHA-256 sobre os dados
+  3. Autenticidade   — assinatura RSA (chave privada do certificado X.509)
+  4. Confidencialidade — cifragem simetrica AES-128-EAX (padrao)
+  5. Transporte      — MQTT QoS 1 (semaforo -> broker -> servidor central)
 """
 
 import json
@@ -29,25 +27,33 @@ PROTOCOLO = "STSP"
 VERSAO = "1.0"
 
 MQTT_HOST = "127.0.0.1"
-MQTT_PORT = 1883  # simulador local
-MQTT_PORT_TLS = 8883  # produção — MQTT/TLS na DMZ (Trabalho 2)
+MQTT_PORT = 1883
+MQTT_PORT_TLS = 8883
 MQTT_QOS = 1
 MQTT_CLIENT_ID_SERVIDOR = "smarttraffic-servidor"
-MQTT_TOPIC_BASE = "smarttraffic/v1/semaforo"
-MQTT_TOPIC_ATMS = "smarttraffic/v1/atms/alertas"
+MQTT_TOPICO_BASE = "smarttraffic/v1/semaforo"
+MQTT_TOPICO_ATMS = "smarttraffic/v1/atms/alertas"
+MQTT_TOPICO_AMBULANCIA = "smarttraffic/v1/ambulancia"
 
 
-def topic_telemetria(device_id: str) -> str:
-    return f"{MQTT_TOPIC_BASE}/{device_id}/telemetria"
+def topico_telemetria(device_id: str) -> str:
+    return f"{MQTT_TOPICO_BASE}/{device_id}/telemetria"
 
 
-def topic_telemetria_wildcard() -> str:
-    return f"{MQTT_TOPIC_BASE}/+/telemetria"
+def topico_telemetria_curinga() -> str:
+    return f"{MQTT_TOPICO_BASE}/+/telemetria"
 
 
-def topic_atms_alertas() -> str:
-    """Dashboard ATMS — alertas correlacionados pelo SIEM (Trabalho 2)."""
-    return MQTT_TOPIC_ATMS
+def topico_alertas_atms() -> str:
+    return MQTT_TOPICO_ATMS
+
+
+def topico_presenca_ambulancia_curinga() -> str:
+    return f"{MQTT_TOPICO_AMBULANCIA}/+/presenca"
+
+
+def topico_presenca_ambulancia(ambulancia_id: str) -> str:
+    return f"{MQTT_TOPICO_AMBULANCIA}/{ambulancia_id}/presenca"
 
 
 def montar_alerta_atms(device_id: str, severidade: str, mensagem: str, fontes: list) -> dict:
@@ -64,7 +70,6 @@ def montar_alerta_atms(device_id: str, severidade: str, mensagem: str, fontes: l
 
 
 def montar_pacote(device_id: str, dados: dict, timestamp: str = None, algoritmo: str = None) -> dict:
-    """Monta pacote STSP com hash e assinatura digital."""
     timestamp = timestamp or datetime.now().isoformat()
     mensagem = json.dumps(dados)
 
@@ -82,18 +87,16 @@ def montar_pacote(device_id: str, dados: dict, timestamp: str = None, algoritmo:
 
 
 def serializar_para_mqtt(pacote: dict, algoritmo: str = None) -> str:
-    """Cifra o pacote STSP para publicação no payload MQTT."""
     algo = algoritmo or pacote.get("criptografia", ALGORITMO_PADRAO)
     return criptografar(json.dumps(pacote), algo)
 
 
 def decodificar_mqtt(payload: str) -> dict:
-    """Decifra e interpreta payload MQTT recebido."""
     pacote_json = descriptografar(payload)
     pacote = json.loads(pacote_json)
 
     if pacote.get("protocolo") != PROTOCOLO:
-        raise ValueError(f"Protocolo inválido: {pacote.get('protocolo')}")
+        raise ValueError(f"Protocolo invalido: {pacote.get('protocolo')}")
 
     return pacote
 
@@ -104,14 +107,11 @@ def validar_timestamp(pacote: dict, max_segundos: int = 30) -> bool:
 
 
 def processar_pacote(pacote: dict, ngfw, proxy, ids, siem) -> dict:
-    """
-    Pipeline completo de validação STSP no servidor central.
-    Retorna dict com resultados de cada camada de segurança.
-    """
-    device_id = pacote.get("device_id", "unknown")
+    device_id = pacote.get("device_id", "desconhecido")
     resultado = {
         "device_id": device_id,
         "cert_ok": False,
+        "mac_ok": False,
         "ngfw_ok": False,
         "proxy_ok": False,
         "nids_ok": True,
@@ -120,13 +120,15 @@ def processar_pacote(pacote: dict, ngfw, proxy, ids, siem) -> dict:
         "assinatura_ok": False,
         "timestamp_ok": False,
         "autentico": False,
+        "classificacao": "DESCONHECIDO",
         "mensagens": [],
     }
 
     cert = obter_certificado_confiavel(device_id)
     if cert is None:
-        resultado["mensagens"].append("Certificado não registrado")
-        siem.ingest("Certificado", {"device_id": device_id, "event": "UNKNOWN_DEVICE"})
+        resultado["mensagens"].append("Certificado nao registrado")
+        resultado["classificacao"] = "DISPOSITIVO_NAO_CADASTRADO"
+        siem.ingerir("Certificado", {"device_id": device_id, "evento": "DISPOSITIVO_DESCONHECIDO"})
         return resultado
 
     cert_ok, cert_msg = verificar_certificado(cert, device_id)
@@ -136,42 +138,53 @@ def processar_pacote(pacote: dict, ngfw, proxy, ids, siem) -> dict:
     resultado["mensagens"].append(f"Certificado: {cert_msg}")
 
     if not cert_ok:
-        siem.ingest("Certificado", {"device_id": device_id, "event": "INVALID_CERT"})
+        if "MAC" in cert_msg:
+            resultado["classificacao"] = "MITM_MAC_FALSIFICADO"
+            siem.ingerir("Certificado", {"device_id": device_id, "evento": "MAC_INVALIDO", "mensagem": cert_msg}, eh_alerta=True)
+        else:
+            resultado["classificacao"] = "MITM_CERTIFICADO_INVALIDO"
+            siem.ingerir("Certificado", {"device_id": device_id, "evento": "CERTIFICADO_INVALIDO"})
         return resultado
 
-    ngfw_ok, ngfw_msg = ngfw.check_device(device_id)
+    mac = cert_meta.get("mac")
+    resultado["mac"] = mac
+    resultado["mac_ok"] = mac is not None
+
+    ngfw_ok, ngfw_msg = ngfw.verificar_dispositivo(device_id, mac)
     resultado["ngfw_ok"] = ngfw_ok
     resultado["mensagens"].append(f"NGFW: {ngfw_msg}")
     if not ngfw_ok:
-        siem.ingest("NGFW", {"device_id": device_id, "event": "BLOCKED"})
+        resultado["classificacao"] = "MITM_NGFW_BLOQUEADO"
+        siem.ingerir("NGFW", {"device_id": device_id, "evento": "BLOQUEADO", "mac": mac})
         return resultado
 
-    if not proxy.check_rate_limit(device_id):
-        resultado["mensagens"].append("Proxy: rate limit excedido")
-        siem.ingest("Proxy", {"device_id": device_id, "event": "RATE_LIMIT_EXCEEDED"})
-        ngfw.add_to_blacklist(device_id)
+    if not proxy.verificar_limite_taxa(device_id):
+        resultado["mensagens"].append("Proxy: limite de taxa excedido")
+        resultado["classificacao"] = "NEGADO_TAXA"
+        siem.ingerir("Proxy", {"device_id": device_id, "evento": "LIMITE_TAXA_EXCEDIDO"})
+        ngfw.adicionar_blacklist(device_id)
         return resultado
 
-    pacote = proxy.anonymize(pacote)
+    pacote = proxy.anonimizar(pacote)
     resultado["proxy_ok"] = True
     resultado["mensagens"].append("Proxy: OK")
 
-    nids_ok = ids.analyze_nids(pacote)
-    hids_ok = ids.analyze_hids(pacote)
+    nids_ok = ids.analisar_nids(pacote)
+    hids_ok = ids.analisar_hids(pacote)
     resultado["nids_ok"] = nids_ok
     resultado["hids_ok"] = hids_ok
 
     if not nids_ok or not hids_ok:
-        siem.ingest("IDS", {"device_id": device_id, "nids_ok": nids_ok, "hids_ok": hids_ok}, is_alert=True)
+        siem.ingerir("IDS", {"device_id": device_id, "nids_ok": nids_ok, "hids_ok": hids_ok}, eh_alerta=True)
         if not nids_ok:
-            siem.ingest(
+            siem.ingerir(
                 "MQTT_BROKER",
-                {"device_id": device_id, "event": "DOS_SUSPEITO"},
-                is_alert=True,
+                {"device_id": device_id, "evento": "DOS_SUSPEITO"},
+                eh_alerta=True,
             )
 
-    siem.ingest("NGFW", {"device_id": device_id, "event": "ALLOWED"}, is_alert=False)
-    siem.ingest("Proxy", {"device_id": device_id, "event": "PROXIED"}, is_alert=False)
+    siem.ingerir("NGFW", {"device_id": device_id, "evento": "PERMITIDO"}, eh_alerta=False)
+    siem.ingerir("Proxy", {"device_id": device_id, "evento": "PROXIADO"}, eh_alerta=False)
 
     mensagem = json.dumps(pacote["dados"])
     resultado["integridade_ok"] = pacote["hash"] == gerar_hash(mensagem)
@@ -181,6 +194,9 @@ def processar_pacote(pacote: dict, ngfw, proxy, ids, siem) -> dict:
     resultado["assinatura_ok"] = assinatura_ok
     resultado["mensagens"].append(assinatura_msg)
 
+    if not assinatura_ok:
+        resultado["classificacao"] = "MITM_ASSINATURA_INVALIDA"
+
     resultado["autentico"] = all([
         resultado["cert_ok"],
         resultado["ngfw_ok"],
@@ -189,5 +205,8 @@ def processar_pacote(pacote: dict, ngfw, proxy, ids, siem) -> dict:
         resultado["assinatura_ok"],
         resultado["timestamp_ok"],
     ])
+
+    if resultado["autentico"]:
+        resultado["classificacao"] = "AUTENTICO"
 
     return resultado

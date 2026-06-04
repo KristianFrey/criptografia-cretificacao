@@ -2,7 +2,7 @@
 Tarefa 4 — Certificados digitais para dispositivos IoT (Semáforo Inteligente).
 
 Autoridade emissora simulada: SmartTraffic IoT CA
-Metadados obrigatórios no certificado: Device ID, chave pública, validade, emissor.
+Metadados obrigatórios no certificado: Device ID, MAC, chave pública, validade, emissor.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -13,8 +13,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID, ExtensionOID
 
-# OID privado para Device ID em certificados IoT do projeto
 DEVICE_ID_OID = x509.ObjectIdentifier("1.3.6.1.4.1.37459.1.1")
+DEVICE_MAC_OID = x509.ObjectIdentifier("1.3.6.1.4.1.37459.1.2")
 
 AUTORIDADE_EMISSORA = "SmartTraffic IoT CA"
 DIAS_VALIDADE_CA = 3650
@@ -29,6 +29,7 @@ from config import (
     CAMINHO_CA_CERT,
     CAMINHO_CA_PRIVADA,
     garantir_estrutura_dados,
+    mac_autorizado,
 )
 
 
@@ -61,7 +62,6 @@ def _agora_utc():
 
 
 def gerar_autoridade_certificadora():
-    """Gera a CA simulada (par de chaves + certificado autoassinado da CA)."""
     _garantir_pastas()
 
     chave_ca = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -112,11 +112,7 @@ def gerar_autoridade_certificadora():
     return cert_ca, chave_ca
 
 
-def emitir_certificado_dispositivo(device_id: str, chave_privada=None):
-    """
-    Emite certificado do dispositivo assinado pela CA simulada.
-    Metadados: Device ID (extensão), chave pública, validade, autoridade emissora.
-    """
+def emitir_certificado_dispositivo(device_id: str, chave_privada=None, mac_address: str = None):
     _garantir_pastas()
 
     if not CAMINHO_CA_CERT.exists() or not CAMINHO_CA_PRIVADA.exists():
@@ -135,7 +131,7 @@ def emitir_certificado_dispositivo(device_id: str, chave_privada=None):
     caminho_privada = PASTA_CHAVES / f"{device_id}_private.pem"
     caminho_cert = PASTA_EMITIDOS / f"{device_id}.pem"
 
-    cert_dispositivo = (
+    builder = (
         x509.CertificateBuilder()
         .subject_name(_nome_dispositivo(device_id))
         .issuer_name(cert_ca.subject)
@@ -167,8 +163,15 @@ def emitir_certificado_dispositivo(device_id: str, chave_privada=None):
             ),
             critical=True,
         )
-        .sign(chave_ca, hashes.SHA256())
     )
+
+    if mac_address:
+        builder = builder.add_extension(
+            x509.UnrecognizedExtension(DEVICE_MAC_OID, mac_address.encode("utf-8")),
+            critical=False,
+        )
+
+    cert_dispositivo = builder.sign(chave_ca, hashes.SHA256())
 
     with open(caminho_privada, "wb") as f:
         f.write(
@@ -198,6 +201,14 @@ def extrair_device_id(cert: x509.Certificate) -> str:
         return cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
 
 
+def extrair_mac(cert: x509.Certificate) -> str:
+    try:
+        ext = cert.extensions.get_extension_for_oid(DEVICE_MAC_OID)
+        return ext.value.value.decode("utf-8")
+    except x509.ExtensionNotFound:
+        return None
+
+
 def extrair_metadados(cert: x509.Certificate) -> dict:
     pub = cert.public_key()
     numeros = pub.public_numbers()
@@ -205,6 +216,7 @@ def extrair_metadados(cert: x509.Certificate) -> dict:
 
     return {
         "device_id": extrair_device_id(cert),
+        "mac": extrair_mac(cert),
         "autoridade_emissora": cert.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value,
         "valido_de": cert.not_valid_before_utc.isoformat(),
         "valido_ate": cert.not_valid_after_utc.isoformat(),
@@ -214,6 +226,7 @@ def extrair_metadados(cert: x509.Certificate) -> dict:
         "chave_publica_fingerprint_sha256": fingerprint,
     }
 
+
 def caminhos_dispositivo(device_id: str):
     pasta = PASTA_DISPOSITIVOS / device_id
     return {
@@ -222,14 +235,15 @@ def caminhos_dispositivo(device_id: str):
         "chave_privada": pasta / "private.pem",
     }
 
+
 def caminhos_emissao(device_id: str):
     return {
         "certificado": PASTA_EMITIDOS / f"{device_id}.pem",
         "chave_privada": PASTA_CHAVES / f"{device_id}_private.pem",
     }
 
+
 def verificar_certificado(cert: x509.Certificate, device_id_esperado: str = None) -> tuple[bool, str]:
-    """Valida cadeia (CA), validade temporal e Device ID."""
     if not CAMINHO_CA_CERT.exists():
         return False, "CA de confiança não encontrada"
 
@@ -260,10 +274,14 @@ def verificar_certificado(cert: x509.Certificate, device_id_esperado: str = None
     if emissor != AUTORIDADE_EMISSORA:
         return False, f"Emissor não autorizado: {emissor}"
 
+    mac = extrair_mac(cert)
+    if mac and not mac_autorizado(mac):
+        return False, f"MAC não autorizado na whitelist: {mac}"
+
     return True, "Certificado válido e confiável"
 
+
 def obter_certificado_confiavel(device_id: str) -> x509.Certificate | None:
-    """Carrega certificado da pasta do dispositivo ou do registro da CA."""
     caminhos_disp = caminhos_dispositivo(device_id)
     if caminhos_disp["certificado"].exists():
         return carregar_certificado(caminhos_disp["certificado"])

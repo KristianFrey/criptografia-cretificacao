@@ -223,3 +223,8 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 src/logs.txt
+
+# Build do next
+siem/.next/
+siem/node_modules/
+siem/out/
