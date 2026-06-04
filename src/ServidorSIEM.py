@@ -2,12 +2,12 @@
 
 import json
 import http.server
-import os
-from pathlib import Path
+from datetime import datetime, timezone
 
 from config import CAMINHO_LOG_JSON, RAIZ
 
 PORTA_SIEM = 8090
+JANELA_AMBULANCIA_SEG = 10
 
 
 class ServidorSIEM(http.server.SimpleHTTPRequestHandler):
@@ -32,7 +32,8 @@ class ServidorSIEM(http.server.SimpleHTTPRequestHandler):
 
         ataques = [e for e in entradas if
                     e.get("classificacao", "").startswith("MITM") or
-                    e.get("classificacao") == "DISPOSITIVO_NAO_CADASTRADO"]
+                    e.get("classificacao") == "DISPOSITIVO_NAO_CADASTRADO" or
+                    e.get("classificacao") == "NEGADO_TAXA"]
         ambulancias = [e for e in entradas if e.get("tipo") == "PRESENCA_AMBULANCIA"]
         autenticos = [e for e in entradas if e.get("classificacao") == "AUTENTICO"]
 
@@ -42,6 +43,19 @@ class ServidorSIEM(http.server.SimpleHTTPRequestHandler):
             if e["device_id"] not in ultimo_estado or ts > ultimo_estado[e["device_id"]].get("timestamp_servidor", ""):
                 ultimo_estado[e["device_id"]] = e
 
+        ambulancia_ativa = None
+        if ambulancias:
+            ultima_amb = ambulancias[-1]
+            try:
+                ts_str = ultima_amb.get("timestamp_servidor", "")
+                ts = datetime.fromisoformat(ts_str)
+                agora = datetime.now(timezone.utc).replace(tzinfo=None)
+                if (agora - ts).total_seconds() < JANELA_AMBULANCIA_SEG:
+                    if ultima_amb.get("dados", {}).get("sirene_ativa", False):
+                        ambulancia_ativa = ultima_amb
+            except (ValueError, AttributeError):
+                pass
+
         resposta = {
             "total": len(entradas),
             "entradas": entradas[-50:][::-1],
@@ -49,7 +63,7 @@ class ServidorSIEM(http.server.SimpleHTTPRequestHandler):
             "ambulancias": ambulancias[-5:][::-1],
             "dispositivos": ultimo_estado,
             "ultimo_ataque": ataques[-1] if ataques else None,
-            "ambulancia_ativa": ambulancias[-1] if ambulancias else None,
+            "ambulancia_ativa": ambulancia_ativa,
         }
 
         self.send_response(200)
