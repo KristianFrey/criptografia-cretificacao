@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Run.py — Orquestrador principal do SmartTraffic.
 
@@ -72,14 +71,15 @@ def _provisionar():
 
 def _compilar_frontend():
     pasta_siem = RAIZ / "siem"
+    _use_shell = sys.platform == "win32"
     if not (pasta_siem / "node_modules").exists():
         print("\n  [SETUP] Instalando dependencias do frontend (npm install)...")
-        subprocess.run(["npm", "install"], cwd=str(pasta_siem), check=True)
+        subprocess.run(["npm", "install"], cwd=str(pasta_siem), check=True, shell=_use_shell)
 
     precisa_build = not (pasta_siem / "out" / "index.html").exists()
     if precisa_build:
         print("\n  [SETUP] Compilando frontend SIEM (npm run build)...")
-        subprocess.run(["npm", "run", "build"], cwd=str(pasta_siem), check=True)
+        subprocess.run(["npm", "run", "build"], cwd=str(pasta_siem), check=True, shell=_use_shell)
         print("  [SETUP] Frontend compilado em siem/out/")
     else:
         print("  [SETUP] Frontend ja compilado, pulando build.")
@@ -189,7 +189,8 @@ def main():
         sys.exit(0)
 
     signal.signal(signal.SIGINT, _tratar_sinal)
-    signal.signal(signal.SIGTERM, _tratar_sinal)
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, _tratar_sinal)
 
     garantir_estrutura_dados()
 
