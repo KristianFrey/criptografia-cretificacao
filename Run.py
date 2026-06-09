@@ -24,6 +24,7 @@ import sys
 import time
 import threading
 import signal
+import webbrowser
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
@@ -178,6 +179,8 @@ def _iniciar_servidor():
 
     print(f"\n[Run] ABRA http://localhost:8090 para ver o painel SIEM.")
     print("[Run] Sistema em execucao. Pressione Ctrl+C para encerrar.\n")
+
+    threading.Timer(2.0, lambda: webbrowser.open("http://localhost:8090")).start()
 
     client.loop_forever()
 
