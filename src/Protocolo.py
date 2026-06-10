@@ -102,6 +102,7 @@ def decodificar_mqtt(payload: str) -> dict:
 
 
 def validar_timestamp(pacote: dict, max_segundos: int = 30) -> bool:
+    # TODO: Colocar tempo de servidor
     timestamp_pacote = datetime.fromisoformat(pacote["timestamp"])
     return (datetime.now() - timestamp_pacote).total_seconds() <= max_segundos
 
