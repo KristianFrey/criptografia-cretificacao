@@ -9,3 +9,4 @@
 
 - MAC-- Implementar MAC no SIEM
 
+- Spawn de eventos pelo front
