@@ -1,3 +1,5 @@
+- Ambulancia em texo simples, tem que criptografar
+
 
 - Cruzamento
 -- Fazer "interativo"
@@ -6,3 +8,4 @@
 - Melhorar classificacao evento da ambulancia no SIEM
 
 - MAC-- Implementar MAC no SIEM
+
