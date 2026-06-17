@@ -98,7 +98,9 @@ export default function PaginaInicial() {
       {temAmbulancia && dados.ambulancia_ativa && (
         <div className="ambulancia-alerta">
           <div className="amb-titulo">
-            <span style={{ fontSize: 20 }}>&#128657;</span>
+            <span style={{ fontSize: 12, border: '1px solid #8b949e', padding: '2px 6px', borderRadius: 4, marginRight: 8 }}>
+              MAC: {dados.ambulancia_ativa.mac || 'N/D'}
+            </span>
             Ambulancia em transito
             <span style={{ fontSize: 10, fontWeight: 400, color: '#8b949e' }}>
               {dados.ambulancia_ativa.dados?.device_id || 'AMBULANCIA_E1'}
@@ -120,7 +122,7 @@ export default function PaginaInicial() {
           <div className="cartao-titulo" style={{ marginTop: 0, marginBottom: 0 }}>
             Dispositivos
             <span className="badge ok">
-              {Object.keys(dados?.dispositivos || {}).length} ativos
+              {Object.keys(dados?.dispositivos || {}).filter(k => k.startsWith('SEMAFORO')).length} ativos
             </span>
           </div>
 
@@ -139,10 +141,6 @@ export default function PaginaInicial() {
                 </div>
                 <Luzes estado={d?.dados?.estado || 'VERMELHO'} />
                 <div className="semaforo-info">
-                  <span className="rotulo">Carros</span>
-                  <span className="valor">{d?.dados?.carros ?? '---'}</span>
-                  <span className="rotulo">Fila</span>
-                  <span className="valor">{d?.dados?.fila_metros ?? '---'} m</span>
                   <span className="rotulo">Fase</span>
                   <span className="valor">{d?.dados?.tempo_fase_seg ?? '---'}s</span>
                   <span className="rotulo">Local</span>
@@ -182,6 +180,18 @@ export default function PaginaInicial() {
                 </div>
               ))
             )}
+          </div>
+          
+          <div className="cartao" style={{ marginTop: 12 }}>
+            <div className="cartao-titulo">Simulador de Eventos (Spawn)</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button className="btn-spawn" onClick={() => fetch('http://localhost:8090/api/action', { method: 'POST', body: JSON.stringify({ action: 'spawn_ambulancia' }) })}>
+                🚑 Spawn Ambulância (Emergência)
+              </button>
+              <button className="btn-spawn" onClick={() => fetch('http://localhost:8090/api/action', { method: 'POST', body: JSON.stringify({ action: 'spawn_ataque' }) })}>
+                👾 Spawn Ataque (MitM)
+              </button>
+            </div>
           </div>
         </div>
 
@@ -280,12 +290,8 @@ export default function PaginaInicial() {
                           </td>
                         )}
                         {colVisiveis.mac && (
-                          <td className="coluna-check">
-                            {e.mac_ok !== undefined ? (
-                              <span className={e.mac_ok ? 'ico-ok' : 'ico-falha'}>
-                                {e.mac_ok ? '\u2713' : '\u2717'}
-                              </span>
-                            ) : (ehAmb ? '---' : '---')}
+                          <td style={{ fontSize: 9 }}>
+                            {e.mac || '---'}
                           </td>
                         )}
                         {colVisiveis.classificacao && <td>{e.classificacao || e.tipo || '?'}</td>}

@@ -28,6 +28,7 @@ from Protocolo import (
     MQTT_PORT,
     MQTT_QOS,
     topico_presenca_ambulancia_curinga,
+    decodificar_mqtt,
 )
 from Telemetria import GeradorTelemetria
 from DispositivoSemaforo import (
@@ -79,7 +80,8 @@ class Cruzamento:
 
         def ao_receber(client, userdata, msg):
             try:
-                dados = json.loads(msg.payload.decode())
+                pacote = decodificar_mqtt(msg.payload.decode())
+                dados = pacote.get("dados", {})
                 if dados.get("sirene_ativa"):
                     with self._lock:
                         self.dados_ambulancia = dados

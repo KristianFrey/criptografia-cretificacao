@@ -228,3 +228,5 @@ src/logs.txt
 siem/.next/
 siem/node_modules/
 siem/out/
+.agents/skills/caveman-stats/SKILL.md
+/.agents

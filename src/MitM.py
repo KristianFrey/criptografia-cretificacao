@@ -143,9 +143,15 @@ class AtacanteMitM:
 
 
 def main():
-    atacante = AtacanteMitM()
-    atacante.iniciar()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--duracao", type=int, default=0)
+    args = parser.parse_args()
 
+    atacante = AtacanteMitM()
+    if args.duracao > 0:
+        threading.Timer(args.duracao, atacante.parar).start()
+    atacante.iniciar()
 
 if __name__ == "__main__":
     main()

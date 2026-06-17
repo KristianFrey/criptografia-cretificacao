@@ -80,10 +80,8 @@ class IDS:
         device_id = pacote.get("device_id", "desconhecido")
         dados = pacote.get("dados", {})
         estado = dados.get("estado", "")
-        carros = dados.get("carros", 0)
         modo = dados.get("modo", "NORMAL")
         tempo_fase = dados.get("tempo_fase_seg", 0)
-        fila = dados.get("fila_metros", 0)
 
         if modo not in self.modos_validos:
             self._alertar("HIDS", device_id, "MODO_INVALIDO",
@@ -93,11 +91,6 @@ class IDS:
         if not (5 <= tempo_fase <= 300):
             self._alertar("HIDS", device_id, "TEMPO_FASE_INVALIDO",
                           f"Tempo de fase fora do padrao: {tempo_fase}s")
-            return False
-
-        if fila < 0 or fila > 500:
-            self._alertar("HIDS", device_id, "FILA_INCONSISTENTE",
-                          f"Fila inconsistente: {fila}m")
             return False
 
         if estado not in self.estados_validos:
@@ -111,13 +104,6 @@ class IDS:
                           f"Transicao irregular: {prev_estado} -> {estado} (sem AMARELO)")
             return False
         self.estado_anterior[device_id] = estado
-
-        prev_carros = self.carros_anteriores.get(device_id)
-        if prev_carros is not None and abs(carros - prev_carros) > 40:
-            self._alertar("HIDS", device_id, "PICO_CARROS",
-                          f"Variacao abrupta de veiculos: {prev_carros} -> {carros}")
-            return False
-        self.carros_anteriores[device_id] = carros
 
         return True
 

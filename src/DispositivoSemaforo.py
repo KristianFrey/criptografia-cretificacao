@@ -55,8 +55,8 @@ def publicar_telemetria(client: mqtt.Client, device_id: str, gerador: GeradorTel
     topico = topico_telemetria(device_id)
     client.publish(topico, payload, qos=MQTT_QOS)
 
-    print(f"\n[SEMAFORO {device_id}] Estado={dados['estado']} Carros={dados['carros']} "
-          f"Fila={dados['fila_metros']}m Modo={dados['modo']}")
+    print(f"\n[SEMAFORO {device_id}] Estado={dados['estado']} Fase={dados['tempo_fase_seg']}s "
+          f"Modo={dados['modo']}")
 
 
 def criar_cliente_mqtt(device_id: str) -> mqtt.Client:

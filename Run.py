@@ -142,8 +142,6 @@ def _iniciar_servidor():
     print("=" * 60)
     print(f"Dispositivos autorizados: {', '.join(DISPOSITIVOS_PADRAO.keys())}")
     print(f"Painel SIEM:          http://localhost:8090")
-    print(f"Ataque MitM em:       {DELAY_ATAQUE}s")
-    print(f"Ambulancia em:        {DELAY_AMBULANCIA}s (duracao {DURACAO_AMBULANCIA}s)")
     print("=" * 60)
 
     print("\n[1/5] Iniciando servidor HTTP SIEM (painel web)...")
@@ -163,19 +161,11 @@ def _iniciar_servidor():
     client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
 
     t_cruz = threading.Thread(target=_iniciar_cruzamento, daemon=True, name="cruzamento")
-    t_ataque = threading.Thread(target=_iniciar_atacante, daemon=True, name="atacante")
-    t_ambulancia = threading.Thread(target=_iniciar_ambulancia, daemon=True, name="ambulancia")
 
-    threads.extend([t_cruz, t_ataque, t_ambulancia])
+    threads.extend([t_cruz])
 
     print("\n[3/5] Iniciando Cruzamento (semaforos)...")
     t_cruz.start()
-
-    print("\n[4/5] Agendando atacante MitM...")
-    t_ataque.start()
-
-    print("\n[5/5] Agendando ambulancia...")
-    t_ambulancia.start()
 
     print(f"\n[Run] ABRA http://localhost:8090 para ver o painel SIEM.")
     print("[Run] Sistema em execucao. Pressione Ctrl+C para encerrar.\n")

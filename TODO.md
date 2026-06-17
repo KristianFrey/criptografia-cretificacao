@@ -1,12 +1,11 @@
-- Ambulancia em texo simples, tem que criptografar
+- [x] Ambulancia em texo simples, tem que criptografar
 
+- [x] Cruzamento
+-- [x] Fazer "interativo"
+-- [x] Ambulancia chegando em um dos semáforos.
 
-- Cruzamento
--- Fazer "interativo"
--- Ambulancia chegando em um dos semáforos.
+- [x] Melhorar classificacao evento da ambulancia no SIEM
 
-- Melhorar classificacao evento da ambulancia no SIEM
+- [x] MAC-- Implementar MAC no SIEM
 
-- MAC-- Implementar MAC no SIEM
-
-- Spawn de eventos pelo front
+- [x] Spawn de eventos pelo front

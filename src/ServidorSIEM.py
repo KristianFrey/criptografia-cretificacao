@@ -20,6 +20,36 @@ class ServidorSIEM(http.server.SimpleHTTPRequestHandler):
         else:
             super().do_GET()
 
+    def do_POST(self):
+        if self.path == "/api/action":
+            self._executar_acao()
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def _executar_acao(self):
+        content_length = int(self.headers.get('Content-Length', 0))
+        post_data = self.rfile.read(content_length)
+        import subprocess
+        try:
+            req = json.loads(post_data.decode())
+            action = req.get("action")
+            import sys
+            python_exe = sys.executable
+            if action == "spawn_ambulancia":
+                subprocess.Popen([python_exe, "src/Ambulancia.py", "--duracao", "20"], cwd=str(RAIZ))
+            elif action == "spawn_ataque":
+                subprocess.Popen([python_exe, "src/MitM.py", "--duracao", "20"], cwd=str(RAIZ))
+            self.send_response(200)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(b'{"status": "ok"}')
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(b'{"status": "error"}')
+
     def _servir_log(self):
         entradas = []
         try:

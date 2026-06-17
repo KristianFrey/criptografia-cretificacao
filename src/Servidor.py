@@ -116,12 +116,13 @@ def _registrar_log_json(pacote: dict, resultado: dict):
         f.write(json.dumps(entrada, ensure_ascii=False) + "\n")
 
 
-def _registrar_log_ambulancia(topico: str, payload: dict):
+def _registrar_log_ambulancia(topico: str, payload: dict, mac: str = None):
     garantir_estrutura_dados()
     entrada = {
         "timestamp_servidor": __import__("datetime").datetime.now().isoformat(),
         "tipo": "PRESENCA_AMBULANCIA",
         "topico": topico,
+        "mac": mac,
         "dados": payload,
     }
     with open(CAMINHO_LOG_JSON, "a", encoding="utf-8") as f:
@@ -151,17 +152,13 @@ def ao_receber_mensagem(client, userdata, msg):
         print(f"\n[ATMS] Alerta no dashboard: {msg.payload.decode()[:120]}...")
         return
 
-    if "ambulancia" in msg.topic and "presenca" in msg.topic:
-        try:
-            payload = json.loads(msg.payload.decode())
-            _registrar_log_ambulancia(msg.topic, payload)
-        except Exception as e:
-            print(f"\nERRO ao processar presenca de ambulancia [{msg.topic}]: {e}")
-        return
-
     try:
         pacote = decodificar_mqtt(msg.payload.decode())
         resultado = processar_pacote(pacote, ngfw, proxy, ids, siem)
+        
+        if pacote.get("tipo") == "PRESENCA_AMBULANCIA" or "ambulancia" in msg.topic:
+            _registrar_log_ambulancia(msg.topic, pacote.get("dados", {}), resultado.get("mac"))
+            
         _imprimir_resultado(pacote, resultado)
         _registrar_log_json(pacote, resultado)
     except Exception as e:

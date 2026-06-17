@@ -25,8 +25,11 @@ from Protocolo import (
     MQTT_PORT,
     MQTT_QOS,
     topico_presenca_ambulancia,
+    montar_pacote,
+    serializar_para_mqtt,
 )
 from Telemetria import GeradorTelemetriaAmbulancia
+from DispositivoSemaforo import _validar_certificado_local
 
 DEVICE_ID_PADRAO = "AMBULANCIA_E1"
 INTERVALO_PRESENCA = 3
@@ -36,6 +39,7 @@ class Ambulancia:
     def __init__(self, device_id: str = DEVICE_ID_PADRAO):
         self.device_id = device_id
         self.gerador = GeradorTelemetriaAmbulancia(device_id)
+        self.cert_info = _validar_certificado_local(device_id)
         self.client = mqtt.Client(
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
             client_id=f"ambulancia-{device_id}",
@@ -44,12 +48,13 @@ class Ambulancia:
 
     def _publicar_presenca(self):
         dados = self.gerador.proximo_pacote()
-        dados["device_id"] = self.device_id
-        dados["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-        dados["tipo"] = "presenca_ambulancia"
+        dados["sirene_ativa"] = self.gerador.sirene_ativa
+        pacote = montar_pacote(self.device_id, dados)
+        pacote["tipo"] = "PRESENCA_AMBULANCIA"
+        payload = serializar_para_mqtt(pacote)
 
         topico = topico_presenca_ambulancia(self.device_id)
-        self.client.publish(topico, json.dumps(dados), qos=MQTT_QOS)
+        self.client.publish(topico, payload, qos=MQTT_QOS)
 
         status_sirene = "LIGADA" if dados["sirene_ativa"] else "DESLIGADA"
         print(f"[AMBULANCIA {self.device_id}] Presenca publicada — "
@@ -94,10 +99,16 @@ class Ambulancia:
 
 
 def main():
-    device_id = sys.argv[1] if len(sys.argv) > 1 else DEVICE_ID_PADRAO
-    ambulancia = Ambulancia(device_id)
-    ambulancia.iniciar(ativar_sirene_apos=8)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("device_id", nargs="?", default=DEVICE_ID_PADRAO)
+    parser.add_argument("--duracao", type=int, default=0)
+    args = parser.parse_args()
 
+    ambulancia = Ambulancia(args.device_id)
+    if args.duracao > 0:
+        threading.Timer(args.duracao, ambulancia.parar).start()
+    ambulancia.iniciar(ativar_sirene_apos=2)
 
 if __name__ == "__main__":
     main()
