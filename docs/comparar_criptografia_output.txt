@@ -1,0 +1,8 @@
+
+==========================================================================================
+COMPARAÇÃO CRIPTOGRAFIA SIMÉTRICA — SEMÁFORO INTELIGENTE
+==========================================================================================
+AES-128-EAX              0.2557 ms  overhead  41.8%
+ChaCha20-Poly1305        0.0523 ms  overhead  42.0%
+3DES-EDE-EAX             0.5513 ms  overhead  39.9%
+Blowfish-EAX             0.5253 ms  overhead  40.6%
