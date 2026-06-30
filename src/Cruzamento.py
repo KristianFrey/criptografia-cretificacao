@@ -5,8 +5,8 @@ Gerencia dois dispositivos semaforo em um cruzamento:
   - Semaforo A1 (via principal)
   - Semaforo B2 (via secundaria)
 
-Logica de coordenacao (invariante: nunca ambos VERDE simultaneamente):
-  - Normal: estados alternam entre A1 verde/B2 vermelho e A1 vermelho/B2 verde
+Logica de coordenacao (invariante: nunca ambos fora de VERMELHO simultaneamente):
+  - Normal: estados alternam entre A1 verde/amarelo/B2 vermelho e A1 vermelho/B2 verde/amarelo
   - Emergencia: A1 = VERDE, B2 = VERMELHO (libera via principal para ambulancia)
 
 Tambem assina topico de presenca de ambulancias para acionar modo EMERGENCIA.
@@ -98,54 +98,51 @@ class Cruzamento:
         self.client_escuta.loop_start()
 
     def _coordenar_estados(self):
-        with self._lock:
-            if self.modo_emergencia.is_set():
-                self.gerador_a1.travar_estado("VERDE")
-                self.gerador_a1.definir_modo_emergencia(True)
+        if self.modo_emergencia.is_set():
+            self.gerador_a1.travar_estado("VERDE")
+            self.gerador_a1.definir_modo_emergencia(True)
+            self.gerador_b2.travar_estado("VERMELHO")
+            self.gerador_b2.definir_modo_emergencia(True)
+        else:
+            self.gerador_a1.destravar_estado()
+            self.gerador_b2.destravar_estado()
+            self.gerador_a1.definir_modo_emergencia(False)
+            self.gerador_b2.definir_modo_emergencia(False)
+
+            a1_livre = self.gerador_a1.estado in ("VERDE", "AMARELO")
+            b2_livre = self.gerador_b2.estado in ("VERDE", "AMARELO")
+
+            if a1_livre:
                 self.gerador_b2.travar_estado("VERMELHO")
-                self.gerador_b2.definir_modo_emergencia(True)
+            elif b2_livre:
+                self.gerador_a1.travar_estado("VERMELHO")
             else:
-                self.gerador_a1.destravar_estado()
-                self.gerador_b2.destravar_estado()
-                self.gerador_a1.definir_modo_emergencia(False)
-                self.gerador_b2.definir_modo_emergencia(False)
-
-                a1_eh_verde = self.gerador_a1.estado == "VERDE"
-                b2_eh_verde = self.gerador_b2.estado == "VERDE"
-
-                if a1_eh_verde and b2_eh_verde:
+                if random.choice([True, False]):
+                    self.gerador_a1.travar_estado("VERDE")
                     self.gerador_b2.travar_estado("VERMELHO")
-                elif a1_eh_verde:
-                    self.gerador_b2.travar_estado("VERMELHO")
-                elif b2_eh_verde:
-                    self.gerador_a1.travar_estado("VERMELHO")
                 else:
-                    if random.choice([True, False]):
-                        self.gerador_a1.travar_estado("VERDE")
-                        self.gerador_b2.travar_estado("VERMELHO")
-                    else:
-                        self.gerador_a1.travar_estado("VERMELHO")
-                        self.gerador_b2.travar_estado("VERDE")
+                    self.gerador_a1.travar_estado("VERMELHO")
+                    self.gerador_b2.travar_estado("VERDE")
 
     def _verificar_fim_emergencia(self):
         if self.modo_emergencia.is_set():
             if self._contador_publicacoes % 3 == 0:
-                with self._lock:
-                    if self.dados_ambulancia is None:
-                        return
-                    if random.random() < 0.20:
-                        self.modo_emergencia.clear()
-                        self.ambulancia_proxima.clear()
-                        self.dados_ambulancia = None
-                        print("\n[CRUZAMENTO] Ambulancia saiu da area. Voltando ao modo NORMAL.")
+                if self.dados_ambulancia is None:
+                    return
+                if random.random() < 0.20:
+                    self.modo_emergencia.clear()
+                    self.ambulancia_proxima.clear()
+                    self.dados_ambulancia = None
+                    print("\n[CRUZAMENTO] Ambulancia saiu da area. Voltando ao modo NORMAL.")
 
     def _thread_semaforo(self, device_id, gerador, cert_info, client):
         while not self.evento_parar.is_set():
-            self._coordenar_estados()
-            self._verificar_fim_emergencia()
-            publicar_telemetria(client, device_id, gerador, cert_info)
-            if device_id == SEMAFORO_PRINCIPAL:
-                self._contador_publicacoes += 1
+            with self._lock:
+                self._coordenar_estados()
+                self._verificar_fim_emergencia()
+                publicar_telemetria(client, device_id, gerador, cert_info)
+                if device_id == SEMAFORO_PRINCIPAL:
+                    self._contador_publicacoes += 1
             time.sleep(INTERVALO_SEG)
 
     def iniciar(self):
@@ -153,7 +150,7 @@ class Cruzamento:
         print("  CRUZAMENTO INTELIGENTE — SmartTraffic")
         print(f"  Semaforos: {SEMAFORO_PRINCIPAL} (principal) + {SEMAFORO_SECUNDARIO} (secundario)")
         print("  Escuta ambulancia: SIM")
-        print("  Invariante: nunca ambos VERDE simultaneamente")
+        print("  Invariante: nunca ambos fora de VERMELHO simultaneamente")
         print("=" * 60)
 
         t_a1 = threading.Thread(

@@ -55,8 +55,14 @@ class ServidorSIEM(http.server.SimpleHTTPRequestHandler):
         try:
             if CAMINHO_LOG_JSON.exists():
                 with open(CAMINHO_LOG_JSON, "r", encoding="utf-8") as f:
-                    linhas = f.read().strip().split("\n")
-                    entradas = [json.loads(l) for l in linhas if l.strip()]
+                    for linha in f:
+                        linha = linha.strip()
+                        if not linha:
+                            continue
+                        try:
+                            entradas.append(json.loads(linha))
+                        except json.JSONDecodeError:
+                            pass
         except Exception:
             pass
 
